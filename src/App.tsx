@@ -2,30 +2,23 @@ import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
-  Button,
   createTheme,
   ThemeProvider,
   CssBaseline,
-  Card,
-  CardContent,
-  CardMedia,
-  CircularProgress,
-  Select,
-  MenuItem,
-  Chip,
   Grid,
-  FormControl,
-  InputLabel,
   Box,
-  FormControlLabel,
-  Switch
+  Snackbar,
 } from '@mui/material';
+
+//import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import LanguageToggle from './components/LanguageToggle';
 import PageLoader from './components/Loader';
 import TopicsChips from './components/TopicsChips';
 import ArticleCard from './components/ArticleCard';
+import ErrorSnackbar from './components/ErrorMessageAlert';
 
 function App() {
 
@@ -34,6 +27,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [selectedTopic, setSelectedTopic] = useState<string>('All');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
   const topics = ['All', 'Apple', 'Meta', 'Netflix', 'Google', 'Twitter', 'Tesla'];
   const handleChipClick = (topic: string) => {
     // if (selectedTopics.includes(topic)) {
@@ -48,6 +44,45 @@ function App() {
   const handleLanguageChange = (language: string) => {
     setSelectedLanguage(language)
   };
+  const handleAxiosError = (error: any) => {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // Display specific messages based on different status codes
+      switch (error.response.status) {
+        case 400:
+          setErrorMsg('Bad Request: ' + error.response.data.message);
+          break;
+        case 401:
+          setErrorMsg('Unauthorized: ' + error.response.data.message);
+          break;
+        case 404:
+          setErrorMsg('Not Found: ' + error.response.data.message);
+          break;
+        case 429:
+          setErrorMsg('Bad Request:' + error.response.data.message)
+          //console.error('Bad Request:', error.response.data.message);
+          break;
+        case 500:
+         setErrorMsg('Server error:'+ error.response.data.message);
+          break;
+
+        default:
+         setErrorMsg('An error occurred:'+ error.response.data.message);
+      };
+      setSnackbarOpen(true);
+    } else if (error.request) {
+      // The request was made but no response was received
+     setErrorMsg('No response received from the server.');
+     setSnackbarOpen(true);
+    } else {
+      // Something happened in setting up the request that triggered an error
+     setErrorMsg('Error setting up the request:'+ error.message);
+     setSnackbarOpen(true);
+    }
+  }
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
   const fetchNews = async () => {
     try {
       setLoading(true);
@@ -61,8 +96,14 @@ function App() {
         },
       });
       setNews(response.data.articles);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching news:', error);
+      if (axios.isAxiosError(error)) {
+        handleAxiosError(error);
+      } else {
+        // Handle other types of errors
+        console.error('Unexpected error:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +120,8 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <ErrorSnackbar errorMessage={errorMsg} open={snackbarOpen} onClose={handleSnackbarClose} />
+  
       <Container>
         <Typography variant="h3" align="center" gutterBottom>
           {t('THE - NEWS - APP')}
