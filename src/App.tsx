@@ -15,32 +15,49 @@ import {
   Chip,
   Grid,
   FormControl,
-  InputLabel
+  InputLabel,
+  Box,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { AnyCnameRecord } from 'dns';
+import LanguageToggle from './components/LanguageToggle';
+import PageLoader from './components/Loader';
+import TopicsChips from './components/TopicsChips';
+import ArticleCard from './components/ArticleCard';
 
 function App() {
 
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [selectedTopic, setSelectedTopic] = useState<string>('All');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
-
-
-  console.log("language---", i18n.language)
+  const topics = ['All', 'Apple', 'Meta', 'Netflix', 'Google', 'Twitter', 'Tesla'];
+  const handleChipClick = (topic: string) => {
+    // if (selectedTopics.includes(topic)) {
+    //   setSelectedTopics((prevSelectedTopics) =>
+    //     prevSelectedTopics.filter((selectedTopic) => selectedTopic !== topic)
+    //   );
+    // } else {
+    //   setSelectedTopics((prevSelectedTopics) => [...prevSelectedTopics, topic]);
+    // }
+    setSelectedTopic(topic)
+  };
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language)
+  };
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('https://newsapi.org/v2/everything', {
+      const response = await axios.get(process.env.REACT_APP_NEWS_API_ENDPOINT!, {
         params: {
-          apiKey: 'd04b10b2a69844d29024e1642cbbf00c',
-          q: selectedTopic || 'meta',
+          apiKey: process.env.REACT_APP_NEWS_API_KEY,
+          q: selectedTopic,
           from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
           sortBy: 'publishedAt',
-          language: 'ar',
+          language: selectedLanguage || 'en',
         },
       });
       setNews(response.data.articles);
@@ -54,76 +71,31 @@ function App() {
   useEffect(() => {
     fetchNews();
   }, [selectedLanguage, selectedTopic]);
-  console.log(news)
-  const handleTopicChange = (event: any) => {
-    setSelectedTopic(event.target.value as string);
-  };
-
-  const openArticle = (url: string) => {
-    window.open(url, '_blank');
-  };
 
   const theme = createTheme({
-    direction: i18n.language === 'ar' ? 'rtl' : 'ltr',
+    direction: selectedLanguage === 'en' ? 'rtl' : 'ltr',
   });
+
   return (
     <ThemeProvider theme={theme}>
-
       <CssBaseline />
       <Container>
         <Typography variant="h3" align="center" gutterBottom>
-          {t('News App')}
+          {t('THE - NEWS - APP')}
         </Typography>
-        <FormControl sx={{ m: 1, minWidth: 120 }}>
-          <Select value={selectedTopic} onChange={handleTopicChange}>
-            <InputLabel id="demo-simple-select-readonly-label">Select</InputLabel>
-            <MenuItem value="apple">Apple</MenuItem>
-            <MenuItem value="meta">Meta</MenuItem>
-            <MenuItem value="netflix">Netflix</MenuItem>
-            <MenuItem value="google">Google</MenuItem>
-            <MenuItem value="twitter">Twitter</MenuItem>
-            <MenuItem value="tesla">Tesla</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl sx={{ m: 1, minWidth: 120 }}>
-          <Select value={selectedTopic} onChange={handleTopicChange}>
-            <InputLabel id="demo-simple-select-readonly-label">Select</InputLabel>
-            <MenuItem value="en">English</MenuItem>
-            <MenuItem value="ar">Arabic</MenuItem>
-          </Select>
-        </FormControl>
-        {loading && <CircularProgress />}
+        <Box>
+          <TopicsChips topics={topics} selectedTopic={selectedTopic} onChipClick={handleChipClick} />
+        </Box>
+        <Box style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle onLanguageChange={handleLanguageChange}></LanguageToggle>
+        </Box>
+        {loading &&
+          <PageLoader></PageLoader>
+        }
         {!loading && (
           <Grid container spacing={3}>
             {news.map((article: any, index: number) => (
-              <Grid key={article.id} xs={12} sm={6} md={4}>
-                <Card key={index} style={{ margin: '20px' }}>
-
-                  <CardMedia component="img" height="140" image={article.urlToImage} alt={article.title} />
-                  <CardContent>
-                    <Typography variant="h6"
-                      sx={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        display: "-webkit-box",
-                        WebkitLineClamp: "1",
-                        WebkitBoxOrient: "vertical",
-                      }}
-                    >{article.title}</Typography>
-                    <Typography variant="body2"
-                      sx={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        display: "-webkit-box",
-                        WebkitLineClamp: "2",
-                        WebkitBoxOrient: "vertical",
-                      }}
-                    >{article.description}</Typography>
-                    <Chip label="Open Article" onClick={() => openArticle(article.url)} />
-                  </CardContent>
-                </Card>
-              </Grid>
-
+              <ArticleCard key={article.id} article={article} index={index} />
             ))}
           </Grid>
         )}
